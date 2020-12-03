@@ -86,13 +86,12 @@ class nfa_with_multiple_initial_states(NFA):
         if list_of_state_already_visited is None:
             list_of_state_already_visited = []
         list_of_state_already_visited += [state_to_bactrack]
-        for initial_state_of_transition in self.transitions:
-            for character_of_transition in self.transitions[initial_state_of_transition]:
-                for final_state_of_transition in self.transitions[initial_state_of_transition][character_of_transition]:
-                    if initial_state_of_transition == state_to_bactrack:
+        if state_to_bactrack in self.transitions:
+            for character_of_transition in self.transitions[state_to_bactrack]:
+                for final_state_of_transition in self.transitions[state_to_bactrack][character_of_transition]:
                         if final_state_of_transition not in list_of_state_already_visited:
                             circle_list = self.Find_cycle(final_state_of_transition,
-                                                          copy(list_of_state_already_visited), circle_list,circle_set)
+                                                              copy(list_of_state_already_visited), circle_list,circle_set)
                         else:
                             new_set = set()
                             ind = list_of_state_already_visited.index(final_state_of_transition)
@@ -300,7 +299,7 @@ class transducer:
     def trim(self):
         a = deepcopy(self)
         a = a.from_transducer_too_multiple_initial_nfa()
-        a.sub_automaton(self.states_set_of_trim_nfa())
+        a.sub_automaton(a.states_set_of_trim_nfa())
         self.compare_nfa_and_transducer(a)
 
     def square_transducer(self, other_transducer):
@@ -611,7 +610,7 @@ transduce = nfa_with_multiple_initial_states(
             )
 
 for i in range(100):
-     tran = creat_random_transducer(6,0.05,{'a','b'},{'c','v','b'},True)
+     tran = creat_random_transducer(5,0.05,{'a','b'},{'c','v','b'},True)
      print(i)
      a = time()
      tran.is_sequential()
