@@ -1,7 +1,157 @@
 from automata.fa.nfa import NFA
-from copy import deepcopy, copy
+from copy import copy
 from random import randint
 from time import time
+import sys
+
+sys.setrecursionlimit(11000)
+
+
+def depth_first_search(automaton, initial_state_of_transition, already_visited=None):
+    if already_visited is None:
+        already_visited = set()
+    already_visited.add(initial_state_of_transition)
+    if initial_state_of_transition not in automaton.transitions:
+        return already_visited
+    if initial_state_of_transition in automaton.transitions:
+        for character_of_transition in automaton.transitions[initial_state_of_transition]:
+            for final_state_of_transition in automaton.transitions[initial_state_of_transition][
+                character_of_transition]:
+                if final_state_of_transition not in already_visited:
+                    already_visited.add(final_state_of_transition)
+                    already_visited = depth_first_search(automaton, final_state_of_transition, already_visited)
+    return already_visited
+
+
+def ascend_edges(automaton, state_to_bactrack, already_visited=None):
+    if already_visited is None:
+        already_visited = set()
+    already_visited.add(state_to_bactrack)
+    for initial_state_of_transition in automaton.transitions:
+        for character_of_transition in automaton.transitions[initial_state_of_transition]:
+            for final_state_of_transition1 in automaton.transitions[initial_state_of_transition][
+                character_of_transition]:
+                if final_state_of_transition1 == state_to_bactrack:
+                    if initial_state_of_transition not in already_visited:
+                        already_visited.add(initial_state_of_transition)
+                        already_visited = ascend_edges(automaton, initial_state_of_transition, already_visited)
+    return already_visited
+
+
+def states_set_of_accessible_from_initial_state_nfa(automaton):
+    set_of_states_from_initial_ones = depth_first_search(automaton, automaton.initial_states)
+    return set_of_states_from_initial_ones
+
+
+def states_set_of_co_accessible_nfa(automaton, set_of_states):
+    set_of_states_from_final_ones = set()
+    for state in set_of_states:
+        current_set = ascend_edges(automaton, state)
+        set_of_states_from_final_ones = set_of_states_from_final_ones.union(current_set)
+    return set_of_states_from_final_ones
+
+
+def states_set_of_trim_nfa(automaton):
+    set_of_states_from_initial_ones = depth_first_search(automaton, automaton.initial_states)
+    set_of_states_from_final_ones = states_set_of_co_accessible_nfa(automaton, automaton.final_states)
+    return set_of_states_from_final_ones.intersection(set_of_states_from_initial_ones)
+
+
+def sub_automaton(automaton, set_of_state):
+    transition = automaton.transitions
+    transition2 = dict()
+    initial_states = set()
+    final_states = set()
+    input_symboles = set()
+
+    for initial_states_of_transition in transition:
+        if initial_states_of_transition in set_of_state:
+            transition2[initial_states_of_transition] = dict()
+            for character_of_transition in transition[initial_states_of_transition]:
+                transition2[initial_states_of_transition][character_of_transition] = set()
+                for final_states_of_transition in transition[initial_states_of_transition][character_of_transition]:
+                    if final_states_of_transition in set_of_state:
+                        transition2[initial_states_of_transition][character_of_transition].add(
+                            final_states_of_transition)
+
+                if transition2[initial_states_of_transition][character_of_transition] == set():
+                    del transition2[initial_states_of_transition][character_of_transition]
+            if transition2[initial_states_of_transition] == dict():
+                del transition2[initial_states_of_transition]
+    if automaton.initial_states in set_of_state:
+        initial_states = automaton.initial_states
+
+    for final_state in automaton.final_states:
+        if final_state in set_of_state:
+            final_states.add(final_state)
+
+    for initial_states_of_transition in transition:
+        for char in transition[initial_states_of_transition]:
+            input_symboles.add(char)
+    return nfa_with_multiple_initial_states(
+        transitions=transition2,
+        states=set_of_state,
+        final_states=final_states,
+        initial_states=initial_states,
+        input_symbols=input_symboles,
+    )
+
+
+def square_transducer_product(first_transducer, other_transducer):
+    input_symbols = first_transducer.input_symbols.intersection(
+        other_transducer.input_symbols)
+    output_symbols = first_transducer.output_symbols.union(other_transducer.output_symbols)
+    transitions = dict()
+    states = set()
+    final_states = set()
+    for initial_state_of_transition1 in first_transducer.transitions:
+        for initial_state_of_transition2 in other_transducer.transitions:
+            for character_of_transition1 in first_transducer.transitions[initial_state_of_transition1]:
+                for character_of_transition2 in other_transducer.transitions[initial_state_of_transition2]:
+                    if character_of_transition1 == character_of_transition2:
+                        transitions[(initial_state_of_transition1, initial_state_of_transition2)] = dict()
+                        states.add((initial_state_of_transition1, initial_state_of_transition2))
+                        transitions[(initial_state_of_transition1, initial_state_of_transition2)][
+                            character_of_transition1] = dict()
+                        for character_changed1 in first_transducer.transitions[initial_state_of_transition1][
+                            character_of_transition1]:
+                            for character_changed2 in \
+                                    other_transducer.transitions[initial_state_of_transition2][
+                                        character_of_transition2]:
+                                transitions[(initial_state_of_transition1, initial_state_of_transition2)][
+                                    character_of_transition1][
+                                    (character_changed1, character_changed2)] = set()
+                                for final_state_of_transition1 in \
+                                        first_transducer.transitions[initial_state_of_transition1][
+                                            character_of_transition1][
+                                            character_changed1]:
+                                    for final_state_of_transition2 in \
+                                            other_transducer.transitions[initial_state_of_transition2][
+                                                character_of_transition2][
+                                                character_changed2]:
+                                        transitions[(initial_state_of_transition1, initial_state_of_transition2)][
+                                            character_of_transition1][
+                                            (character_changed1, character_changed2)].add(
+                                            (final_state_of_transition1, final_state_of_transition2))
+                                        states.add((final_state_of_transition1, final_state_of_transition2))
+    initial_states = (first_transducer.initial_states, other_transducer.initial_states)
+    states.add((first_transducer.initial_states, other_transducer.initial_states))
+    states.add((other_transducer.initial_states, first_transducer.initial_states))
+    for states1 in first_transducer.final_states:
+        for states2 in other_transducer.final_states:
+            final_states.add((states1, states2))
+            final_states.add((states2, states1))
+            states.add((states1, states2))
+            states.add((states2, states1))
+    return transducer(
+        final_states=final_states,
+        transitions=transitions,
+        initial_states=initial_states,
+        input_symbols=input_symbols,
+        output_symbols=output_symbols,
+        states=states,
+    )
+
 
 class nfa_with_multiple_initial_states(NFA):
     def __init__(self, states, input_symbols, transitions, initial_states, final_states):
@@ -49,154 +199,6 @@ class nfa_with_multiple_initial_states(NFA):
             self.initial_states = initial_states
             self.transitions = transitions
             self.input_symbols = input_symbols
-
-    def depth_first_search(self, initial_state_of_transition, already_visited=None):
-        if already_visited is None:
-            already_visited = set()
-        already_visited.add(initial_state_of_transition)
-        if initial_state_of_transition not in self.transitions:
-            return already_visited
-        if initial_state_of_transition in self.transitions:
-            for character_of_transition in self.transitions[initial_state_of_transition]:
-                for final_state_of_transition in self.transitions[initial_state_of_transition][character_of_transition]:
-                    if final_state_of_transition not in already_visited:
-                        already_visited.add(final_state_of_transition)
-                        already_visited = self.depth_first_search(final_state_of_transition, already_visited)
-        return already_visited
-
-    def ascend_edges(self, state_to_bactrack, already_visited=None):
-        if already_visited is None:
-            already_visited = set()
-        already_visited.add(state_to_bactrack)
-        for initial_state_of_transition in self.transitions:
-            for character_of_transition in self.transitions[initial_state_of_transition]:
-                for final_state_of_transition1 in self.transitions[initial_state_of_transition][
-                    character_of_transition]:
-                    if final_state_of_transition1 == state_to_bactrack:
-                        if initial_state_of_transition not in already_visited:
-                            already_visited.add(initial_state_of_transition)
-                            already_visited = self.ascend_edges(initial_state_of_transition, already_visited)
-        return already_visited
-################# work in progress #######################################################
-    def Find_cycle(self, state_to_bactrack, list_of_state_already_visited=None, circle_list=None,circle_set=None):
-        if circle_list is None:
-            circle_list = []
-        if circle_set is None:
-            circle_set = []
-        if list_of_state_already_visited is None:
-            list_of_state_already_visited = []
-        list_of_state_already_visited += [state_to_bactrack]
-        if state_to_bactrack in self.transitions:
-            for character_of_transition in self.transitions[state_to_bactrack]:
-                for final_state_of_transition in self.transitions[state_to_bactrack][character_of_transition]:
-                        if final_state_of_transition not in list_of_state_already_visited:
-                            circle_list = self.Find_cycle(final_state_of_transition,
-                                                              copy(list_of_state_already_visited), circle_list,circle_set)
-                        else:
-                            new_set = set()
-                            ind = list_of_state_already_visited.index(final_state_of_transition)
-                            for elem in list_of_state_already_visited[ind:]:
-                                new_set.add(elem)
-                            if new_set not in circle_set:
-                                circle_list += [list_of_state_already_visited[ind:]]
-                                circle_set += [new_set]
-        return circle_list
-
-    ################################################################################
-    def states_set_of_accessible_from_initial_state_nfa(self):
-        set_of_states_from_initial_ones = self.depth_first_search(self.initial_states)
-        return set_of_states_from_initial_ones
-
-    def states_set_of_co_accessible_nfa(self, set_of_states):
-        set_of_states_from_final_ones = set()
-        for state in set_of_states:
-            current_set = self.ascend_edges(state)
-            set_of_states_from_final_ones = set_of_states_from_final_ones.union(current_set)
-        return set_of_states_from_final_ones
-
-    def states_set_of_trim_nfa(self):
-        set_of_states_from_initial_ones = self.depth_first_search(self.initial_states)
-        set_of_states_from_final_ones = self.states_set_of_co_accessible_nfa(self.final_states)
-        return set_of_states_from_final_ones.intersection(set_of_states_from_initial_ones)
-
-    def sub_automaton(self, set_of_state):
-        transition = self.transitions
-        transition2 = dict()
-        initial_states = set()
-        final_states = set()
-        input_symboles = set()
-
-        for initial_states_of_transition in transition:
-            if initial_states_of_transition in set_of_state:
-                transition2[initial_states_of_transition] = dict()
-                for character_of_transition in transition[initial_states_of_transition]:
-                    transition2[initial_states_of_transition][character_of_transition] = set()
-                    for final_states_of_transition in transition[initial_states_of_transition][character_of_transition]:
-                        if final_states_of_transition in set_of_state:
-                            transition2[initial_states_of_transition][character_of_transition].add(
-                                final_states_of_transition)
-
-                    if transition2[initial_states_of_transition][character_of_transition] == set():
-                        del transition2[initial_states_of_transition][character_of_transition]
-                if transition2[initial_states_of_transition] == dict():
-                    del transition2[initial_states_of_transition]
-        if self.initial_states in set_of_state:
-            initial_states = self.initial_states
-
-        for final_state in self.final_states:
-            if final_state in set_of_state:
-                final_states.add(final_state)
-
-        for initial_states_of_transition in transition:
-            for char in transition[initial_states_of_transition]:
-                input_symboles.add(char)
-        self.transitions = transition2
-        self.states = set_of_state
-        self.final_states = final_states
-        self.initial_states = initial_states
-        self.input_symbols = input_symboles
-
-    def square_automaton(self, other_nfa):
-        input_symbols = self.input_symbols.intersection(
-            other_nfa.input_symbols)
-        transitions = dict()
-        states = set()
-        for initial_state_of_transition1 in self.transitions:
-            for initial_state_of_transition2 in other_nfa.transitions:
-                for character_of_transition1 in self.transitions[initial_state_of_transition1]:
-                    for character_of_transition2 in other_nfa.transitions[initial_state_of_transition2]:
-                        if character_of_transition1 == character_of_transition2:
-                            transitions[(initial_state_of_transition1, initial_state_of_transition2)] = dict()
-                            states.add((initial_state_of_transition1, initial_state_of_transition2))
-                            transitions[(initial_state_of_transition1, initial_state_of_transition2)][
-                                character_of_transition1] = set()
-                            for final_state_of_transition1 in self.transitions[initial_state_of_transition1][
-                                character_of_transition1]:
-                                for final_state_of_transition2 in other_nfa.transitions[initial_state_of_transition2][
-                                    character_of_transition2]:
-                                    transitions[(initial_state_of_transition1, initial_state_of_transition2)][
-                                        character_of_transition1].add(
-                                        (final_state_of_transition1, final_state_of_transition2))
-                                    states.add((final_state_of_transition1, final_state_of_transition2))
-
-        initial_states = set()
-        initial_states.add((self.initial_states, other_nfa.initial_states))
-        initial_states.add((other_nfa.initial_states, self.initial_states))
-        states.add((self.initial_states, other_nfa.initial_states))
-        states.add((other_nfa.initial_states, self.initial_states))
-        final_states = set()
-        for states1 in self.final_states:
-            for states2 in other_nfa.final_states:
-                final_states.add((states1, states2))
-                final_states.add((states2, states1))
-                states.add((states1, states2))
-                states.add((states2, states1))
-
-        self.final_states = final_states
-        self.transitions = transitions
-        self.initial_states = initial_states
-        self.input_symbols = input_symbols
-        self.states = states
 
 
 class transducer:
@@ -255,12 +257,6 @@ class transducer:
                         new_transitions[state][char].add(element)
         return new_transitions
 
-    def from_transducer_too_multiple_initial_nfa(self):
-        new_transitions = self.creat_transitions_for_sub_automaton()
-        return nfa_with_multiple_initial_states(states=self.states, input_symbols=self.input_symbols,
-                                                transitions=new_transitions, initial_states=self.initial_states,
-                                                final_states=self.final_states)
-
     def compare_nfa_and_transducer(self, nfa_multiple):
         self.states = nfa_multiple.states
         self.input_symbols = nfa_multiple.input_symbols
@@ -297,106 +293,21 @@ class transducer:
         self.transitions = new_transition
 
     def trim(self):
-        a = deepcopy(self)
-        a = a.from_transducer_too_multiple_initial_nfa()
-        a.sub_automaton(a.states_set_of_trim_nfa())
-        self.compare_nfa_and_transducer(a)
+        nfa_from_transducer = from_transducer_too_multiple_initial_nfa(self)
+        nfa_from_transducer = sub_automaton(nfa_from_transducer, states_set_of_trim_nfa(nfa_from_transducer))
+        self.compare_nfa_and_transducer(nfa_from_transducer)
 
-    def square_transducer(self, other_transducer):
-
-        input_symbols = self.input_symbols.intersection(
-            other_transducer.input_symbols)
-
-        transitions = dict()
-        states = set()
-        final_states = set()
-
-        for initial_state_of_transition1 in self.transitions:
-            for initial_state_of_transition2 in other_transducer.transitions:
-                for character_of_transition1 in self.transitions[initial_state_of_transition1]:
-                    for character_of_transition2 in other_transducer.transitions[initial_state_of_transition2]:
-                        if character_of_transition1 == character_of_transition2:
-                            transitions[(initial_state_of_transition1, initial_state_of_transition2)] = dict()
-                            states.add((initial_state_of_transition1, initial_state_of_transition2))
-                            transitions[(initial_state_of_transition1, initial_state_of_transition2)][
-                                character_of_transition1] = dict()
-                            for character_changed1 in self.transitions[initial_state_of_transition1][
-                                character_of_transition1]:
-                                for character_changed2 in \
-                                        other_transducer.transitions[initial_state_of_transition2][
-                                            character_of_transition2]:
-                                    transitions[(initial_state_of_transition1, initial_state_of_transition2)][
-                                        character_of_transition1][
-                                        (character_changed1, character_changed2)] = set()
-                                    for final_state_of_transition1 in \
-                                            self.transitions[initial_state_of_transition1][character_of_transition1][
-                                                character_changed1]:
-                                        for final_state_of_transition2 in \
-                                                other_transducer.transitions[initial_state_of_transition2][
-                                                    character_of_transition2][
-                                                    character_changed2]:
-                                            transitions[(initial_state_of_transition1, initial_state_of_transition2)][
-                                                character_of_transition1][
-                                                (character_changed1, character_changed2)].add(
-                                                (final_state_of_transition1, final_state_of_transition2))
-                                            states.add((final_state_of_transition1, final_state_of_transition2))
-
-        initial_states = (self.initial_states, other_transducer.initial_states)
-        states.add((self.initial_states, other_transducer.initial_states))
-        states.add((other_transducer.initial_states, self.initial_states))
-        for states1 in self.final_states:
-            for states2 in other_transducer.final_states:
-                final_states.add((states1, states2))
-                final_states.add((states2, states1))
-                states.add((states1, states2))
-                states.add((states2, states1))
-
-        self.final_states = final_states
-        self.transitions = transitions
-        self.initial_states = initial_states
-        self.input_symbols = input_symbols
-        self.states = states
-
-    def mark_cycle(self):
-        automaton = self.from_transducer_too_multiple_initial_nfa()
-        automaton.sub_automaton(automaton.states_set_of_accessible_from_initial_state_nfa())
-        Cycle_list = automaton.Find_cycle(automaton.initial_states)
-        self.compare_nfa_and_transducer(automaton)
-        set_of_state_marked = set()
-        for cycle in Cycle_list:
-            list_of_word = [('', '')]
-            for index_of_circle in range(len(cycle)):
-                list_of_word_2 = []
-                for character_of_transition in self.transitions[cycle[index_of_circle]]:
-                    for character_changed in self.transitions[cycle[index_of_circle]][character_of_transition]:
-                        for final_state_of_transition in \
-                                self.transitions[cycle[index_of_circle]][character_of_transition][character_changed]:
-                            if index_of_circle == len(cycle) - 1:
-                                if final_state_of_transition == cycle[0]:
-                                    for index_element in range(len(list_of_word)):
-                                        list_of_word_2 += [
-                                            add_tuple_string(list_of_word[index_element], character_changed)]
-                            elif final_state_of_transition == cycle[index_of_circle + 1]:
-                                for index_element in range(len(list_of_word)):
-                                    list_of_word_2 += [add_tuple_string(list_of_word[index_element], character_changed)]
-                list_of_word = list_of_word_2
-            for tuple_of_concatenate_word in list_of_word:
-                if tuple_of_concatenate_word[0] != '' and tuple_of_concatenate_word[1] != '':
-                    for element_to_mark in cycle:
-                        set_of_state_marked.add(element_to_mark)
-
-        return set_of_state_marked
-
-    ############# Work in progress #################
     def is_sequential(self):
-        square_transducer = copy(self)
-        square_transducer.square_transducer(square_transducer)
-        automaton = square_transducer.from_transducer_too_multiple_initial_nfa()
-        print(len(automaton.states))
-        print(number_of_transition(automaton))
-        set_of_marked_state = square_transducer.mark_cycle()
-        set_of_co_accessible_state_from_circle = automaton.states_set_of_co_accessible_nfa(set_of_marked_state)
-        automaton.sub_automaton(set_of_co_accessible_state_from_circle)
+        a = time()
+        self.trim()
+        square_transducer = square_transducer_product(self, self)
+        automaton = from_transducer_too_multiple_initial_nfa(square_transducer)
+        print("square ", time() - a)
+        set_of_marked_state = mark_state(square_transducer)
+        print("mark time ", time() - a)
+        set_of_co_accessible_state_from_circle = states_set_of_co_accessible_nfa(automaton,set_of_marked_state)
+        automaton = sub_automaton(automaton,set_of_co_accessible_state_from_circle)
+        print("final time ", time() - a)
         if automaton.transitions == {}:
             if automaton.initial_states in automaton.final_states:
                 return True
@@ -411,44 +322,43 @@ class transducer:
         T2 = copy(T1)
         while value_W_prime != set():
             state = value_W_prime.pop()
-            for character_of_transition in square_transducer.transitions[state[0]]:
-                for character_changed in square_transducer.transitions[state[0]][
-                    character_of_transition]:
-                    for final_state_of_transition in \
-                            square_transducer.transitions[state[0]][character_of_transition][
-                                character_changed]:
-                        h_prime = wB(state[1], character_changed)
-                        if (final_state_of_transition, h_prime) not in passed:
-                            value_W_prime.add((final_state_of_transition, h_prime))
-                            if h_prime == 0:
-                                return False
-                            else:
-                                case_2 = False
-                                if h_prime[0] != 0:
-                                    case_2 = True
-                                if case_2:
-                                    if are_comparable(h_prime[0], T1[final_state_of_transition]):
-                                        if len(h_prime[0]) > len(T1[final_state_of_transition]):
-                                            T1[final_state_of_transition] = h_prime
-                                    else:
-                                        return False
+            if state[0] in square_transducer.transitions:
+                for character_of_transition in square_transducer.transitions[state[0]]:
+                    for character_changed in square_transducer.transitions[state[0]][
+                        character_of_transition]:
+                        for final_state_of_transition in \
+                                square_transducer.transitions[state[0]][character_of_transition][
+                                    character_changed]:
+                            h_prime = wB(state[1], character_changed)
+                            if (final_state_of_transition, h_prime) not in passed:
+                                value_W_prime.add((final_state_of_transition, h_prime))
+                                if h_prime == 0:
+                                    return False
                                 else:
-                                    if are_comparable(h_prime[1], T2[final_state_of_transition]):
-                                        if len(h_prime[2]) > len(T2[final_state_of_transition]):
-                                            T2[final_state_of_transition] = h_prime
+                                    case_2 = False
+                                    if h_prime[0] != 0:
+                                        case_2 = True
+                                    if case_2:
+                                        if are_comparable(h_prime[0], T1[final_state_of_transition]):
+                                            if len(h_prime[0]) > len(T1[final_state_of_transition]):
+                                                T1[final_state_of_transition] = h_prime
+                                        else:
+                                            return False
                                     else:
-                                        return False
-                            value_W_prime.add((final_state_of_transition, h_prime))
-            passed.add(state)
+                                        if are_comparable(h_prime[1], T2[final_state_of_transition]):
+                                            if len(h_prime[2]) > len(T2[final_state_of_transition]):
+                                                T2[final_state_of_transition] = h_prime
+                                        else:
+                                            return False
+                                value_W_prime.add((final_state_of_transition, h_prime))
+                passed.add(state)
         return True
 
-    #############################################################################
     def is_function(self, as_been_visited=None):
         if as_been_visited is None:
             as_been_visited = set()
-        square_transducer = deepcopy(self)
-        square_transducer.square_transducer(square_transducer)
-        automaton = square_transducer.from_transducer_too_multiple_initial_nfa()
+        square_transducer = square_transducer_product(self, self)
+        automaton = from_transducer_too_multiple_initial_nfa(square_transducer)
         automaton.sub_automaton(automaton.states_set_of_trim_nfa())
         square_transducer.compare_nfa_and_transducer(automaton)
         if automaton.transitions == {}:
@@ -487,7 +397,7 @@ class transducer:
 
 
 def creat_random_transducer(number_of_state_max, density_transition, input_symbols, output_symbols,
-                            want_epsilon_transition = None):
+                            want_epsilon_transition=None):
     if want_epsilon_transition is None:
         want_epsilon_transition = True
     if want_epsilon_transition:
@@ -588,31 +498,233 @@ def are_comparable(str1, str2):
 def add_tuple_string(tuple1, tuple2):
     return tuple1[0] + tuple2[0], tuple1[1] + tuple2[1]
 
+
 def number_of_transition(tranduceur):
     number = 0
     for i in tranduceur.transitions:
         for t in tranduceur.transitions[i]:
-                for n in tranduceur.transitions[i][t]:
-                    number += 1
+            for n in tranduceur.transitions[i][t]:
+                number += 1
     return number
-transduce = nfa_with_multiple_initial_states(
-    states={'q0','q1','q2','q3','q4','q5','q6','q7','q8','q9'},
+
+
+################# work in progress #######################################################
+def find_marked_states(auto, list_of_state_already_visited=None):
+    if list_of_state_already_visited is None:
+        list_of_state_already_visited = []
+    n = len(auto.states)
+    list_of_states_dag = []
+    list_of_state_visited = []
+    a = time()
+    for state in auto.states:
+        list_of_state_already_visited += \
+        depth_first_search_with_marked_states(auto, state, copy(list_of_state_already_visited))[1]
+        if len(list_of_state_already_visited) == n:
+            break
+    print("copy", time() - a)
+    list_of_state_already_visited.reverse()
+    new_auto = inverse(auto)
+    i = 0
+    while i < len(list_of_state_already_visited):
+        new_set = set()
+        new_set = \
+        depth_first_search_with_marked_states(new_auto, list_of_state_already_visited[i], list_of_state_visited)[0]
+        list_of_states_dag += [tuple(new_set)]
+        list_of_state_visited += new_set
+        i += len(new_set)
+
+    print("co_acce", time() - a)
+    return list_of_states_dag
+
+
+def from_transducer_too_multiple_initial_nfa(transducer):
+    new_transitions = transducer.creat_transitions_for_sub_automaton()
+    return nfa_with_multiple_initial_states(states=transducer.states, input_symbols=transducer.input_symbols,
+                                            transitions=new_transitions, initial_states=transducer.initial_states,
+                                            final_states=transducer.final_states)
+
+
+def depth_first_search_with_marked_states(automate, initial_state_of_transition, already_visited, list_marked=None):
+    if list_marked is None:
+        list_marked = []
+    if initial_state_of_transition in already_visited:
+        return already_visited, list_marked
+    already_visited += [initial_state_of_transition]
+    if initial_state_of_transition not in automate.transitions:
+        list_marked += [initial_state_of_transition]
+        return already_visited, list_marked
+    else:
+        for character_of_transition in automate.transitions[initial_state_of_transition]:
+            for final_state_of_transition in automate.transitions[initial_state_of_transition][character_of_transition]:
+                if final_state_of_transition not in already_visited:
+                    already_visited, list_marked = depth_first_search_with_marked_states(automate,
+                                                                                         final_state_of_transition,
+                                                                                         already_visited, list_marked)
+        list_marked += [initial_state_of_transition]
+        return already_visited, list_marked
+
+
+def inverse(automaton):
+    new_transition = dict()
+    for initial_state_of_transition in automaton.transitions:
+        for character_of_transition in automaton.transitions[initial_state_of_transition]:
+            for final_state_of_transition in automaton.transitions[initial_state_of_transition][
+                character_of_transition]:
+                if final_state_of_transition not in new_transition:
+                    new_transition[final_state_of_transition] = dict()
+                if character_of_transition not in new_transition[final_state_of_transition]:
+                    new_transition[final_state_of_transition][character_of_transition] = set()
+                new_transition[final_state_of_transition][character_of_transition].add(initial_state_of_transition)
+    return nfa_with_multiple_initial_states(transitions=new_transition,
+                                            final_states=automaton.final_states,
+                                            initial_states=automaton.initial_states,
+                                            input_symbols=automaton.input_symbols,
+                                            states=automaton.states
+
+                                            )
+
+
+def co_assessible_search_test(automaton, state_to_bactrack, list_to_acces, already_visited=None):
+    if already_visited is None:
+        already_visited = set()
+    if state_to_bactrack in list_to_acces:
+        return already_visited
+    already_visited.add(state_to_bactrack)
+    for initial_state_of_transition in automaton.transitions:
+        for character_of_transition in automaton.transitions[initial_state_of_transition]:
+            for final_state_of_transition in automaton.transitions[initial_state_of_transition][
+                character_of_transition]:
+                if final_state_of_transition == state_to_bactrack:
+                    if initial_state_of_transition not in already_visited:
+                        if initial_state_of_transition not in list_to_acces:
+                            already_visited.add(initial_state_of_transition)
+                            already_visited = co_assessible_search_test(automaton, initial_state_of_transition,
+                                                                        list_to_acces, already_visited)
+    return already_visited
+
+
+def creat_dag(automaton, list_of_set_of_state):
+    new_initial_state = None
+    new_final_state = set()
+    new_transition = dict()
+    for set_of_state in list_of_set_of_state:
+        if automaton.initial_states in set_of_state:
+            new_initial_state = set_of_state
+    for set_of_state in list_of_set_of_state:
+        for state in set_of_state:
+            if state in automaton.final_states:
+                new_final_state.add(set_of_state)
+                break
+    for set_of_state in list_of_set_of_state:
+        for other_set_of_state in list_of_set_of_state:
+            if set_of_state != other_set_of_state:
+                for initial_state_of_transition in set_of_state:
+                    if initial_state_of_transition in automaton.transitions:
+                        for character_of_transition in automaton.transitions[initial_state_of_transition]:
+                            for final_state_of_transition in automaton.transitions[initial_state_of_transition][
+                                character_of_transition]:
+                                if final_state_of_transition in other_set_of_state:
+                                    if initial_state_of_transition not in new_transition:
+                                        new_transition[set_of_state] = dict()
+                                    if character_of_transition not in new_transition[set_of_state]:
+                                        new_transition[set_of_state][character_of_transition] = set()
+                                    new_transition[set_of_state][character_of_transition].add(other_set_of_state)
+                                    break
+
+    return nfa_with_multiple_initial_states(initial_states=new_initial_state,
+                                            final_states=new_final_state,
+                                            transitions=new_transition,
+                                            input_symbols=automaton.input_symbols,
+                                            states=list_of_set_of_state
+                                            )
+
+
+def mark_state(square_transducer):
+    automaton = from_transducer_too_multiple_initial_nfa(square_transducer)
+    dag = creat_dag(automaton, find_marked_states(automaton))
+    marked_state = set()
+    already_marked = set()
+    for state in dag.states:
+        if state not in already_marked:
+            for element in state:
+                if element in square_transducer.transitions:
+                    for character_of_transition in square_transducer.transitions[element]:
+                        for character_changed in square_transducer.transitions[element][character_of_transition]:
+                            for element1 in state:
+                                if element1 in square_transducer.transitions[element][character_of_transition][
+                                    character_changed]:
+                                    if character_changed != [('', '')]:
+                                        marked_state.union(set(state))
+                                        already_marked.add(state)
+                                        set_of_co_accessible = ascend_edges(dag,state)
+                                        for state_co_accessible in set_of_co_accessible:
+                                            marked_state.union(set(state_co_accessible))
+                                            already_marked.add(state_co_accessible)
+
+    return marked_state
+
+
+def square_automaton(first_nfa, other_nfa):
+    input_symbols = first_nfa.input_symbols.intersection(
+        other_nfa.input_symbols)
+    transitions = dict()
+    states = set()
+    for initial_state_of_transition1 in first_nfa.transitions:
+        for initial_state_of_transition2 in other_nfa.transitions:
+            for character_of_transition1 in first_nfa.transitions[initial_state_of_transition1]:
+                for character_of_transition2 in other_nfa.transitions[initial_state_of_transition2]:
+                    if character_of_transition1 == character_of_transition2:
+                        transitions[(initial_state_of_transition1, initial_state_of_transition2)] = dict()
+                        states.add((initial_state_of_transition1, initial_state_of_transition2))
+                        transitions[(initial_state_of_transition1, initial_state_of_transition2)][
+                            character_of_transition1] = set()
+                        for final_state_of_transition1 in first_nfa.transitions[initial_state_of_transition1][
+                            character_of_transition1]:
+                            for final_state_of_transition2 in other_nfa.transitions[initial_state_of_transition2][
+                                character_of_transition2]:
+                                transitions[(initial_state_of_transition1, initial_state_of_transition2)][
+                                    character_of_transition1].add(
+                                    (final_state_of_transition1, final_state_of_transition2))
+                                states.add((final_state_of_transition1, final_state_of_transition2))
+
+    initial_states = set()
+    initial_states.add((first_nfa.initial_states, other_nfa.initial_states))
+    initial_states.add((other_nfa.initial_states, first_nfa.initial_states))
+    states.add((first_nfa.initial_states, other_nfa.initial_states))
+    states.add((other_nfa.initial_states, first_nfa.initial_states))
+    final_states = set()
+    for states1 in first_nfa.final_states:
+        for states2 in other_nfa.final_states:
+            final_states.add((states1, states2))
+            final_states.add((states2, states1))
+            states.add((states1, states2))
+            states.add((states2, states1))
+    return nfa_with_multiple_initial_states(
+        final_states=final_states,
+        transitions=transitions,
+        initial_states=initial_states,
+        input_symbols=input_symbols,
+        states=states
+    )
+
+
+transduce = transducer(
+    states={'q0', 'q1', 'q2', 'q3', 'q4', 'q5', 'q6'},
     input_symbols={'a', 'b'},
     initial_states='q0',
+    output_symbols={'', 'b'},
     final_states={'q0', 'q1'},
-    transitions={'q0': {'b': {'q0','q1','q2','q3','q4','q5','q6','q7','q8','q9'}},
-                 'q1': {'b': {'q0','q1','q2','q3','q4','q5','q6','q7','q8','q9'}},
-                 'q2': {'b': {'q0','q1','q2','q3','q4','q5','q6','q7','q8','q9'}},
-'q3': {'b': {'q0','q1','q2','q3','q4','q5','q6','q7','q8','q9'}},
-'q4': {'b': {'q0','q1','q2','q3','q4','q5','q6','q7','q8','q9'}},
-'q5': {'b': {'q0','q1','q2','q3','q4','q5','q6','q7','q8','q9'}},
-'q': {'b': {'q0','q1','q2','q3','q4','q5','q6','q7','q8','q9'}}}
-            )
+    transitions={'q0': {'b': {'b': {'q1'}}},
+                 'q1': {'b': {'b': {'q0', 'q2'}}},
+                 'q2': {'b': {'b': {'q3'}}},
+                 'q3': {'b': {'b': {'q4', 'q5'}}},
+                 'q4': {'b': {'b': {'q2'}}},
+                 'q5': {'b': {'': {'q6'}}},
+                 'q6': {'b': {'': {'q5'}}}})
+b = from_transducer_too_multiple_initial_nfa(transduce)
+b_prim = inverse(b)
 
 for i in range(100):
-     tran = creat_random_transducer(5,0.05,{'a','b'},{'c','v','b'},True)
-     print(i)
-     a = time()
-     tran.is_sequential()
-     b = time() - a
-     print(b)
+    a = creat_random_transducer(35, 0.1, {'b'}, {'b'}, want_epsilon_transition=True)
+    print(a.transitions)
+    print(a.is_sequential())
