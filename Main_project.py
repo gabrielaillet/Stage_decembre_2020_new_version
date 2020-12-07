@@ -8,6 +8,16 @@ sys.setrecursionlimit(11000)
 
 
 def depth_first_search(automaton, initial_state_of_transition, already_visited=None):
+    """
+    This function aim to find all the states accessible from the initial_state_of_transition in an transducer_to_use
+    Used in : states_set_of_accessible_from_initial_state_nfa , states_set_of_trim_nfa
+    :param automaton: is a class nfa object. Type - nfa
+    :param initial_state_of_transition: is the starting state from which the function start running. Type - str
+    :param already_visited: is a set of all the states reachable from initial_state_of_transition.By default is None
+                            . Type - set of str
+    :return: already_visited: is a set of all the states reachable from initial_state_of_transition. Type - set of str
+    """
+
     if already_visited is None:
         already_visited = set()
     already_visited.add(initial_state_of_transition)
@@ -23,15 +33,24 @@ def depth_first_search(automaton, initial_state_of_transition, already_visited=N
     return already_visited
 
 
-def ascend_edges(automaton, state_to_bactrack, already_visited=None):
+def ascend_edges(automaton, state_to_backtrack, already_visited=None):
+    """
+    This function aim to find all the states co-accessible from the state_to_backtrack in an transducer_to_use
+    Used in : states_set_of_co_accessible_nfa
+    :param automaton: is a class nfa object. Type - nfa
+    :param state_to_backtrack: is the starting state from which the function start running. Type - str
+    :param already_visited: is a set of all the states reachable from initial_state_of_transition.By default is None
+                            . Type - set of str
+    :return: already_visited: is a set of all the states reachable from initial_state_of_transition. Type - set of str
+    """
     if already_visited is None:
         already_visited = set()
-    already_visited.add(state_to_bactrack)
+    already_visited.add(state_to_backtrack)
     for initial_state_of_transition in automaton.transitions:
         for character_of_transition in automaton.transitions[initial_state_of_transition]:
             for final_state_of_transition1 in automaton.transitions[initial_state_of_transition][
                 character_of_transition]:
-                if final_state_of_transition1 == state_to_bactrack:
+                if final_state_of_transition1 == state_to_backtrack:
                     if initial_state_of_transition not in already_visited:
                         already_visited.add(initial_state_of_transition)
                         already_visited = ascend_edges(automaton, initial_state_of_transition, already_visited)
@@ -39,11 +58,24 @@ def ascend_edges(automaton, state_to_bactrack, already_visited=None):
 
 
 def states_set_of_accessible_from_initial_state_nfa(automaton):
+    """
+    This function aim to find all the accessible state of an transducer_to_use. Meaning all states accessible from the initial
+    state of the transducer_to_use.
+    :param automaton: an nfa object. Type - nfa
+    :return: set_states_from_initial_ones: all the states accessible in the transducer_to_use . Type - set of str
+    """
     set_of_states_from_initial_ones = depth_first_search(automaton, automaton.initial_states)
     return set_of_states_from_initial_ones
 
 
 def states_set_of_co_accessible_nfa(automaton, set_of_states):
+    """
+    This function aim to find all the co-accessible state of an transducer_to_use. Meaning all states co-accessible from the
+    finals states of the transducer_to_use.
+    :param automaton: an nfa object. Type - nfa
+    :param set_of_states:
+    :return: set_states_from_final_ones: all the states accessible in the transducer_to_use . Type - set of str
+    """
     set_of_states_from_final_ones = set()
     for state in set_of_states:
         current_set = ascend_edges(automaton, state)
@@ -52,12 +84,25 @@ def states_set_of_co_accessible_nfa(automaton, set_of_states):
 
 
 def states_set_of_trim_nfa(automaton):
+    """
+    Find all the states that are either accessible from the initial state or co-accessible from the finals one.
+    :param automaton: an nfa object. Type - nfa
+    :return: set_of_trim_states. Type - set of str
+    """
     set_of_states_from_initial_ones = depth_first_search(automaton, automaton.initial_states)
     set_of_states_from_final_ones = states_set_of_co_accessible_nfa(automaton, automaton.final_states)
-    return set_of_states_from_final_ones.intersection(set_of_states_from_initial_ones)
+    set_of_trim_states = set_of_states_from_final_ones.intersection(set_of_states_from_initial_ones)
+    return set_of_trim_states
 
 
 def sub_automaton(automaton, set_of_state):
+    """
+    Considering an transducer_to_use A and a set of state return the sub transducer_to_use SA . Considering two state u,v
+     u -- > v is in SA if and only if u and v is in set_of_state and u --> v is in A.
+    :param automaton: an nfa object. Type - nfa
+    :param set_of_state:  Type - set of str
+    :return: sub_automaton_to_return . Type - nfa
+    """
     transition = automaton.transitions
     transition2 = dict()
     initial_states = set()
@@ -88,16 +133,23 @@ def sub_automaton(automaton, set_of_state):
     for initial_states_of_transition in transition:
         for char in transition[initial_states_of_transition]:
             input_symboles.add(char)
-    return nfa_with_multiple_initial_states(
+    sub_automaton_to_return = nfa_with_multiple_initial_states(
         transitions=transition2,
         states=set_of_state,
         final_states=final_states,
         initial_states=initial_states,
         input_symbols=input_symboles,
     )
+    return sub_automaton_to_return
 
 
 def square_transducer_product(first_transducer, other_transducer):
+    """
+    Considering two transducer_to_use, make the product of them and return a new transducer_to_use.
+    :param first_transducer: Type - transducer_to_use
+    :param other_transducer: Type - transducer_to_use
+    :return: final_transducer: Type - transducer_to_use
+    """
     input_symbols = first_transducer.input_symbols.intersection(
         other_transducer.input_symbols)
     output_symbols = first_transducer.output_symbols.union(other_transducer.output_symbols)
@@ -143,7 +195,7 @@ def square_transducer_product(first_transducer, other_transducer):
             final_states.add((states2, states1))
             states.add((states1, states2))
             states.add((states2, states1))
-    return transducer(
+    final_transducer = transducer(
         final_states=final_states,
         transitions=transitions,
         initial_states=initial_states,
@@ -151,7 +203,36 @@ def square_transducer_product(first_transducer, other_transducer):
         output_symbols=output_symbols,
         states=states,
     )
+    return final_transducer
 
+
+def creat_transitions_for_sub_automaton(transducer_to_use):
+    """
+    Find all the transition that fit the definition in from_transducer_to_multiple_nfa.
+    :param transducer_to_use: Type - transducer
+    :return: A dictionary of transition.
+    """
+    new_transitions = dict()
+    for state in transducer_to_use.transitions:
+        new_transitions[state] = dict()
+        for char in transducer_to_use.transitions[state]:
+            new_transitions[state][char] = set()
+            for char_to_change in transducer_to_use.transitions[state][char]:
+                for element in transducer_to_use.transitions[state][char][char_to_change]:
+                    new_transitions[state][char].add(element)
+    return new_transitions
+
+def from_transducer_to_multiple_initial_nfa(transducer_to_use):
+    """
+    Given a transducer T return the automaton A induced. Given u,v two states of T, u --(char1)-- > v is in A if
+    and only if there is a transition  u --(char1,char2) -- > v in T.
+    :param transducer_to_use: Type - transducer
+    :return: Type - nfa
+    """
+    new_transitions = transducer_to_use.creat_transitions_for_sub_automaton()
+    return nfa_with_multiple_initial_states(states=transducer_to_use.states, input_symbols=transducer_to_use.input_symbols,
+                                            transitions=new_transitions, initial_states=transducer_to_use.initial_states,
+                                            final_states=transducer_to_use.final_states)
 
 class nfa_with_multiple_initial_states(NFA):
     def __init__(self, states, input_symbols, transitions, initial_states, final_states):
@@ -246,16 +327,6 @@ class transducer:
             self.input_symbols = input_symbols
             self.output_symbols = output_symbols
 
-    def creat_transitions_for_sub_automaton(self):
-        new_transitions = dict()
-        for state in self.transitions:
-            new_transitions[state] = dict()
-            for char in self.transitions[state]:
-                new_transitions[state][char] = set()
-                for char_to_change in self.transitions[state][char]:
-                    for element in self.transitions[state][char][char_to_change]:
-                        new_transitions[state][char].add(element)
-        return new_transitions
 
     def compare_nfa_and_transducer(self, nfa_multiple):
         self.states = nfa_multiple.states
@@ -293,7 +364,7 @@ class transducer:
         self.transitions = new_transition
 
     def trim(self):
-        nfa_from_transducer = from_transducer_too_multiple_initial_nfa(self)
+        nfa_from_transducer = from_transducer_to_multiple_initial_nfa(self)
         nfa_from_transducer = sub_automaton(nfa_from_transducer, states_set_of_trim_nfa(nfa_from_transducer))
         self.compare_nfa_and_transducer(nfa_from_transducer)
 
@@ -301,7 +372,7 @@ class transducer:
         a = time()
         self.trim()
         square_transducer = square_transducer_product(self, self)
-        automaton = from_transducer_too_multiple_initial_nfa(square_transducer)
+        automaton = from_transducer_to_multiple_initial_nfa(square_transducer)
         print("square ", time() - a)
         set_of_marked_state = mark_state(square_transducer)
         print("mark time ", time() - a)
@@ -358,7 +429,7 @@ class transducer:
         if as_been_visited is None:
             as_been_visited = set()
         square_transducer = square_transducer_product(self, self)
-        automaton = from_transducer_too_multiple_initial_nfa(square_transducer)
+        automaton = from_transducer_to_multiple_initial_nfa(square_transducer)
         automaton.sub_automaton(automaton.states_set_of_trim_nfa())
         square_transducer.compare_nfa_and_transducer(automaton)
         if automaton.transitions == {}:
@@ -385,14 +456,16 @@ class transducer:
                                     dictionary_of_value[final_state_of_transition] = wB(
                                         dictionary_of_value[initial_state_of_transition], character_changed)
                                     as_been_visited.add(final_state_of_transition)
+                                    for final_state in square_transducer.final_states:
+                                        if dictionary_of_value[final_state] != ('', ''):
+                                            return False
                                 elif final_state_of_transition in as_been_visited:
                                     if dictionary_of_value[final_state_of_transition] != wB(
                                             dictionary_of_value[initial_state_of_transition], character_changed):
                                         return False
-
-        for final_state in square_transducer.final_states:
-            if dictionary_of_value[final_state] != ('', ''):
-                return False
+                                    for final_state in square_transducer.final_states:
+                                        if dictionary_of_value[final_state] != ('', ''):
+                                            return False
         return True
 
 
@@ -537,11 +610,6 @@ def find_marked_states(auto, list_of_state_already_visited=None):
     return list_of_states_dag
 
 
-def from_transducer_too_multiple_initial_nfa(transducer):
-    new_transitions = transducer.creat_transitions_for_sub_automaton()
-    return nfa_with_multiple_initial_states(states=transducer.states, input_symbols=transducer.input_symbols,
-                                            transitions=new_transitions, initial_states=transducer.initial_states,
-                                            final_states=transducer.final_states)
 
 
 def depth_first_search_with_marked_states(automate, initial_state_of_transition, already_visited, list_marked=None):
@@ -640,7 +708,7 @@ def creat_dag(automaton, list_of_set_of_state):
 
 
 def mark_state(square_transducer):
-    automaton = from_transducer_too_multiple_initial_nfa(square_transducer)
+    automaton = from_transducer_to_multiple_initial_nfa(square_transducer)
     dag = creat_dag(automaton, find_marked_states(automaton))
     marked_state = set()
     already_marked = set()
@@ -721,7 +789,7 @@ transduce = transducer(
                  'q4': {'b': {'b': {'q2'}}},
                  'q5': {'b': {'': {'q6'}}},
                  'q6': {'b': {'': {'q5'}}}})
-b = from_transducer_too_multiple_initial_nfa(transduce)
+b = from_transducer_to_multiple_initial_nfa(transduce)
 b_prim = inverse(b)
 
 for i in range(100):
