@@ -222,6 +222,7 @@ def creat_transitions_for_sub_automaton(transducer_to_use):
                     new_transitions[state][char].add(element)
     return new_transitions
 
+
 def from_transducer_to_multiple_initial_nfa(transducer_to_use):
     """
     Given a transducer T return the automaton A induced. Given u,v two states of T, u --(char1)-- > v is in A if
@@ -229,10 +230,13 @@ def from_transducer_to_multiple_initial_nfa(transducer_to_use):
     :param transducer_to_use: Type - transducer
     :return: Type - nfa
     """
-    new_transitions = transducer_to_use.creat_transitions_for_sub_automaton()
-    return nfa_with_multiple_initial_states(states=transducer_to_use.states, input_symbols=transducer_to_use.input_symbols,
-                                            transitions=new_transitions, initial_states=transducer_to_use.initial_states,
+    new_transitions = creat_transitions_for_sub_automaton(transducer_to_use)
+    return nfa_with_multiple_initial_states(states=transducer_to_use.states,
+                                            input_symbols=transducer_to_use.input_symbols,
+                                            transitions=new_transitions,
+                                            initial_states=transducer_to_use.initial_states,
                                             final_states=transducer_to_use.final_states)
+
 
 class nfa_with_multiple_initial_states(NFA):
     def __init__(self, states, input_symbols, transitions, initial_states, final_states):
@@ -327,7 +331,6 @@ class transducer:
             self.input_symbols = input_symbols
             self.output_symbols = output_symbols
 
-
     def compare_nfa_and_transducer(self, nfa_multiple):
         self.states = nfa_multiple.states
         self.input_symbols = nfa_multiple.input_symbols
@@ -364,11 +367,18 @@ class transducer:
         self.transitions = new_transition
 
     def trim(self):
+        """
+        Modify the current transducer to give the trim part of himself
+        """
         nfa_from_transducer = from_transducer_to_multiple_initial_nfa(self)
         nfa_from_transducer = sub_automaton(nfa_from_transducer, states_set_of_trim_nfa(nfa_from_transducer))
         self.compare_nfa_and_transducer(nfa_from_transducer)
 
     def is_sequential(self):
+        """
+        Find if there is an equivalent transducer that is deterministic.
+        :return:Type - bool
+        """
         a = time()
         self.trim()
         square_transducer = square_transducer_product(self, self)
@@ -376,8 +386,8 @@ class transducer:
         print("square ", time() - a)
         set_of_marked_state = mark_state(square_transducer)
         print("mark time ", time() - a)
-        set_of_co_accessible_state_from_circle = states_set_of_co_accessible_nfa(automaton,set_of_marked_state)
-        automaton = sub_automaton(automaton,set_of_co_accessible_state_from_circle)
+        set_of_co_accessible_state_from_circle = states_set_of_co_accessible_nfa(automaton, set_of_marked_state)
+        automaton = sub_automaton(automaton, set_of_co_accessible_state_from_circle)
         print("final time ", time() - a)
         if automaton.transitions == {}:
             if automaton.initial_states in automaton.final_states:
@@ -426,11 +436,16 @@ class transducer:
         return True
 
     def is_function(self, as_been_visited=None):
+        """
+        Find if the transducer is sequential or not.
+        :param as_been_visited: Set to None.
+        :return: Type - bool
+        """
         if as_been_visited is None:
             as_been_visited = set()
         square_transducer = square_transducer_product(self, self)
         automaton = from_transducer_to_multiple_initial_nfa(square_transducer)
-        automaton.sub_automaton(automaton.states_set_of_trim_nfa())
+        automaton =  sub_automaton(automaton, states_set_of_trim_nfa(automaton))
         square_transducer.compare_nfa_and_transducer(automaton)
         if automaton.transitions == {}:
             if automaton.initial_states in automaton.final_states:
@@ -471,6 +486,19 @@ class transducer:
 
 def creat_random_transducer(number_of_state_max, density_transition, input_symbols, output_symbols,
                             want_epsilon_transition=None):
+    """
+    Given a number of state maximum NM, a density of transition, an alphabet of input and output return a transducer
+    that have at most NM states. For every transition that exist in the complete transducer, we roll a random number
+    between 0 and 1 and if that number is lower than the density of transition the given transition is saved for the
+    transducer created.
+    :param number_of_state_max: Type - int
+    :param density_transition: Number between 0 and 1 the precision of the roll is 0.01.Type - float
+    :param input_symbols: Type - set of char
+    :param output_symbols: Type - set of char
+    :param want_epsilon_transition: Determine wether or not there is a u ---(char1,'')--> v transition in the transducer
+                                    created.  Type-bool
+    :return: Type - transducer
+    """
     if want_epsilon_transition is None:
         want_epsilon_transition = True
     if want_epsilon_transition:
@@ -521,6 +549,12 @@ def creat_random_transducer(number_of_state_max, density_transition, input_symbo
 
 
 def reverse(string_element):
+    """
+    Given a string, return it miror form.
+    'ACDB' return 'BDCA'
+    :param string_element: Type - str
+    :return: Type - str
+    """
     str2 = ''
     for i in range(len(string_element) - 1, -1, -1):
         str2 += string_element[i]
@@ -528,6 +562,15 @@ def reverse(string_element):
 
 
 def remove(string_element_1, string_element_2):
+    """
+    Given two string S1 and S2 return the concatenate form S1S2 without the identical characters
+    S1 = "ABAA"
+    S2 = "AACA"
+    remobe(S1,S2) = "ABCA"
+    :param string_element_1:Type - str
+    :param string_element_2:Type - str
+    :return:Type - str
+    """
     len_str1 = len(string_element_1)
     len_str2 = len(string_element_2)
     len_str = min(len_str1, len_str2)
@@ -591,7 +634,7 @@ def find_marked_states(auto, list_of_state_already_visited=None):
     a = time()
     for state in auto.states:
         list_of_state_already_visited += \
-        depth_first_search_with_marked_states(auto, state, copy(list_of_state_already_visited))[1]
+            depth_first_search_with_marked_states(auto, state, copy(list_of_state_already_visited))[1]
         if len(list_of_state_already_visited) == n:
             break
     print("copy", time() - a)
@@ -601,15 +644,13 @@ def find_marked_states(auto, list_of_state_already_visited=None):
     while i < len(list_of_state_already_visited):
         new_set = set()
         new_set = \
-        depth_first_search_with_marked_states(new_auto, list_of_state_already_visited[i], list_of_state_visited)[0]
+            depth_first_search_with_marked_states(new_auto, list_of_state_already_visited[i], list_of_state_visited)[0]
         list_of_states_dag += [tuple(new_set)]
         list_of_state_visited += new_set
         i += len(new_set)
 
     print("co_acce", time() - a)
     return list_of_states_dag
-
-
 
 
 def depth_first_search_with_marked_states(automate, initial_state_of_transition, already_visited, list_marked=None):
@@ -724,7 +765,7 @@ def mark_state(square_transducer):
                                     if character_changed != [('', '')]:
                                         marked_state.union(set(state))
                                         already_marked.add(state)
-                                        set_of_co_accessible = ascend_edges(dag,state)
+                                        set_of_co_accessible = ascend_edges(dag, state)
                                         for state_co_accessible in set_of_co_accessible:
                                             marked_state.union(set(state_co_accessible))
                                             already_marked.add(state_co_accessible)
