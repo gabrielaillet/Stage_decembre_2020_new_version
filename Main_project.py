@@ -90,11 +90,8 @@ def states_set_of_trim_nfa(automaton):
     :return: set_of_trim_states. Type - set of str
     """
     set_of_states_from_initial_ones = depth_first_search(automaton, automaton.initial_states)
-    print(set_of_states_from_initial_ones)
     set_of_states_from_final_ones = states_set_of_co_accessible_nfa(automaton, automaton.final_states)
-    print(set_of_states_from_final_ones)
     set_of_trim_states = set_of_states_from_final_ones.intersection(set_of_states_from_initial_ones)
-    print(set_of_trim_states)
     return set_of_trim_states
 
 
@@ -253,6 +250,7 @@ def find_marked_states(auto, list_of_state_already_visited=None):
         if len(list_of_state_already_visited) == n:
             break
     print("copy", time() - a)
+    a = time()
     list_of_state_already_visited.reverse()
     new_auto = inverse(auto)
     i = 0
@@ -752,9 +750,7 @@ class transducer:
         """
         nfa_from_transducer = from_transducer_to_multiple_initial_nfa(self)
         nfa_from_transducer = sub_automaton(nfa_from_transducer, states_set_of_trim_nfa(nfa_from_transducer))
-        print(nfa_from_transducer.transitions)
         self.compare_nfa_and_transducer(nfa_from_transducer)
-        print(self.transitions)
     def is_sequential(self):
         """
         Find if there exist an equivalent transducer that is deterministic.
@@ -766,14 +762,14 @@ class transducer:
         square_transducer = square_transducer_product(self, self)
 
         automaton = from_transducer_to_multiple_initial_nfa(square_transducer)
-        print("square ", time() - a)
+        print("time to make square ", time() - a)
+        a = time()
         set_of_marked_state = mark_state(square_transducer)
-        print(set_of_marked_state)
-        print("mark time ", time() - a)
+        print("time to mark all state", time() - a)
+        a = time()
         set_of_co_accessible_state_from_circle = states_set_of_co_accessible_nfa(automaton, set_of_marked_state)
-        print(set_of_co_accessible_state_from_circle)
         automaton = sub_automaton(automaton, set_of_co_accessible_state_from_circle)
-        print("final time ", time() - a)
+        a = time()
         if automaton.transitions == {}:
             if automaton.initial_states in automaton.final_states:
                 return True
@@ -799,6 +795,7 @@ class transducer:
                             if (final_state_of_transition, h_prime) not in passed:
                                 value_W_prime.add((final_state_of_transition, h_prime))
                                 if h_prime == 0:
+                                    print("final phase time", time() - a)
                                     return False
                                 else:
                                     case_2 = False
@@ -809,15 +806,18 @@ class transducer:
                                             if len(h_prime[0]) > len(T1[final_state_of_transition]):
                                                 T1[final_state_of_transition] = h_prime
                                         else:
+                                            print("final phase time", time() - a)
                                             return False
                                     else:
                                         if are_comparable(h_prime[1], T2[final_state_of_transition]):
                                             if len(h_prime[2]) > len(T2[final_state_of_transition]):
                                                 T2[final_state_of_transition] = h_prime
                                         else:
+                                            print("final phase time", time() - a)
                                             return False
                                 value_W_prime.add((final_state_of_transition, h_prime))
                 passed.add(state)
+        print("final phase time", time() - a)
         return True
 
     def is_function(self, as_been_visited=None):
