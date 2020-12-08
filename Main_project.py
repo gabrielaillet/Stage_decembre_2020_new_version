@@ -90,8 +90,11 @@ def states_set_of_trim_nfa(automaton):
     :return: set_of_trim_states. Type - set of str
     """
     set_of_states_from_initial_ones = depth_first_search(automaton, automaton.initial_states)
+    print(set_of_states_from_initial_ones)
     set_of_states_from_final_ones = states_set_of_co_accessible_nfa(automaton, automaton.final_states)
+    print(set_of_states_from_final_ones)
     set_of_trim_states = set_of_states_from_final_ones.intersection(set_of_states_from_initial_ones)
+    print(set_of_trim_states)
     return set_of_trim_states
 
 
@@ -376,11 +379,11 @@ def mark_state(square_transducer):
                                 if element1 in square_transducer.transitions[element][character_of_transition][
                                     character_changed]:
                                     if character_changed != [('', '')]:
-                                        marked_state.union(set(state))
+                                        marked_state = marked_state.union(set(state))
                                         already_marked.add(state)
                                         set_of_co_accessible = ascend_edges(dag, state)
                                         for state_co_accessible in set_of_co_accessible:
-                                            marked_state.union(set(state_co_accessible))
+                                            marked_state = marked_state.union(set(state_co_accessible))
                                             already_marked.add(state_co_accessible)
 
     return marked_state
@@ -749,8 +752,9 @@ class transducer:
         """
         nfa_from_transducer = from_transducer_to_multiple_initial_nfa(self)
         nfa_from_transducer = sub_automaton(nfa_from_transducer, states_set_of_trim_nfa(nfa_from_transducer))
+        print(nfa_from_transducer.transitions)
         self.compare_nfa_and_transducer(nfa_from_transducer)
-
+        print(self.transitions)
     def is_sequential(self):
         """
         Find if there exist an equivalent transducer that is deterministic.
@@ -758,12 +762,16 @@ class transducer:
         """
         a = time()
         self.trim()
+
         square_transducer = square_transducer_product(self, self)
+
         automaton = from_transducer_to_multiple_initial_nfa(square_transducer)
         print("square ", time() - a)
         set_of_marked_state = mark_state(square_transducer)
+        print(set_of_marked_state)
         print("mark time ", time() - a)
         set_of_co_accessible_state_from_circle = states_set_of_co_accessible_nfa(automaton, set_of_marked_state)
+        print(set_of_co_accessible_state_from_circle)
         automaton = sub_automaton(automaton, set_of_co_accessible_state_from_circle)
         print("final time ", time() - a)
         if automaton.transitions == {}:
@@ -875,14 +883,8 @@ transduce = transducer(
     final_states={'q0', 'q1'},
     transitions={'q0': {'b': {'b': {'q1'}}},
                  'q1': {'b': {'b': {'q0', 'q2'}}},
-                 'q2': {'b': {'b': {'q3'}}},
-                 'q3': {'b': {'b': {'q4', 'q5'}}},
-                 'q4': {'b': {'b': {'q2'}}},
-                 'q5': {'b': {'': {'q6'}}},
-                 'q6': {'b': {'': {'q5'}}}})
-b = from_transducer_to_multiple_initial_nfa(transduce)
-b_prim = inverse(b)
-
+                 'q2': {'b': {'b': {'q3'}}}
+                 })
 for i in range(10):
-    transduce = creat_random_transducer(20,0.1,{'a','b'},{'b'},want_epsilon_transition=True)
+    transduce = creat_random_transducer(4,1,{'a','b'},{'a','b'},want_epsilon_transition=False)
     print(transduce.is_sequential())
