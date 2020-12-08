@@ -567,6 +567,10 @@ def number_of_transition(tranduceur):
             for n in tranduceur.transitions[i][t]:
                 number += 1
     return number
+
+
+
+
 def delay(list_tuple_str1,list_tuple_str2):
     new_list_str = []
     for e in list_tuple_str1:
@@ -859,7 +863,7 @@ class transducer:
 
 
 
-################# work in progress #######################################################
+
 
 
 
@@ -879,3 +883,6 @@ transduce = transducer(
 b = from_transducer_to_multiple_initial_nfa(transduce)
 b_prim = inverse(b)
 
+for i in range(10):
+    transduce = creat_random_transducer(20,0.1,{'a','b'},{'b'},want_epsilon_transition=True)
+    print(transduce.is_sequential())
