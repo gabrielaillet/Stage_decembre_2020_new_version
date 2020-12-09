@@ -1101,7 +1101,7 @@ transduce = transducer(
                  'q0': {'b':{'': {'q0'}}},
                  })
 
-for i in range(100):
+for i in range(1000):
     print(i)
     a = creat_random_transducer2(5,0.5,1,{'a','b'},{'c','d'},want_epsilon_transition=True)
     a.is_sequential()
