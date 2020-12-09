@@ -250,22 +250,17 @@ def find_marked_states(auto, list_of_state_already_visited=None):
             break
     list_of_state_already_visited.reverse()
     new_auto = inverse(auto)
-    print(list_of_state_already_visited)
-    print(new_auto.transitions)
     set_mark = []
     i = 0
     while i < len(list_of_state_already_visited):
         new_set = \
             depth_first_search_with_marked_states(new_auto, list_of_state_already_visited[i], copy(list_of_state_visited),[])[1]
-        print(new_set)
         if len(new_set) == 1 :
             list_of_states_dag += [((new_set[0]),None)]
         else:
             list_of_states_dag += [tuple(new_set)]
         list_of_state_visited += new_set
-        print(list_of_states_dag)
         i += len(new_set)
-        print(i)
 
     return list_of_states_dag
 
@@ -444,7 +439,6 @@ def Truc1(square_transducer):
                                 (state[0],state[1],len(truc_changed[0]) - len(truc_changed[1]))))
 
     states = square_transducer.initial_states
-    print(dag.transitions)
     set_states = dag.initial_states
     sub_set_to_explore.remove(set_states)
     transi = set()
@@ -1067,3 +1061,13 @@ transduce = transducer(
 a = square_transducer_product(transduce,transduce)
 print(a.initial_states)
 print(Truc1(a))
+
+for i in range(1000):
+    print(i)
+    a = creat_random_transducer2(2,0.5,1,{'a'},{'c'},want_epsilon_transition=True)
+    print(a.transitions)
+    a = square_transducer_product(a,a)
+    print(a.transitions)
+    c,b = Truc1(a)
+    if not b:
+        print(b)
