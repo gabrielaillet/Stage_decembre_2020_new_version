@@ -965,7 +965,7 @@ class transducer:
         nfa_from_transducer = from_transducer_to_multiple_initial_nfa(self)
         nfa_from_transducer = sub_automaton(nfa_from_transducer, states_set_of_trim_nfa(nfa_from_transducer))
         self.compare_nfa_and_transducer(nfa_from_transducer)
-    def is_sequential(self):
+    def is_sequential(self,step_by_step_print = False):
         """
         Find if there exist an equivalent transducer that is deterministic.
         :return:Type - bool
@@ -973,15 +973,18 @@ class transducer:
         self.trim()
 
         square_transducer = square_transducer_product(self, self)
+        if step_by_step_print:
+            print("square transducer done")
         automaton = from_transducer_to_multiple_initial_nfa(square_transducer)
         a = time()
         set_of_marked_state = mark_state(square_transducer)
         a = time()
         set_of_co_accessible_state_from_circle = states_set_of_co_accessible_nfa(automaton, set_of_marked_state)
         automaton = sub_automaton(automaton, set_of_co_accessible_state_from_circle)
-
+        if step_by_step_print:
+            print("finding all cycle done")
         if automaton.transitions == {}:
-            print('ouoi')
+
             if automaton.initial_states in automaton.final_states:
                 return True
             else:
@@ -1073,15 +1076,17 @@ class transducer:
                                         dictionary_of_value[initial_state_of_transition], character_changed)
                                     as_been_visited.add(final_state_of_transition)
                                     for final_state in square_transducer.final_states:
-                                        if dictionary_of_value[final_state] != ('', ''):
-                                            return False
+                                        if final_state in dictionary_of_value:
+                                            if dictionary_of_value[final_state] != ('', ''):
+                                                return False
                                 elif final_state_of_transition in as_been_visited:
                                     if dictionary_of_value[final_state_of_transition] != wB(
                                             dictionary_of_value[initial_state_of_transition], character_changed):
                                         return False
                                     for final_state in square_transducer.final_states:
-                                        if dictionary_of_value[final_state] != ('', ''):
-                                            return False
+                                        if final_state in dictionary_of_value:
+                                            if dictionary_of_value[final_state] != ('', ''):
+                                                return False
         return True
 
 
@@ -1100,8 +1105,3 @@ transduce = transducer(
     transitions={'q1': {'b': {'': {'q1'},'b':{'q0'}}},
                  'q0': {'b':{'': {'q0'}}},
                  })
-
-for i in range(1000):
-    print(i)
-    a = creat_random_transducer2(5,0.5,1,{'a','b'},{'c','d'},want_epsilon_transition=True)
-    a.is_sequential()
