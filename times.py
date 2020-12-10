@@ -17,3 +17,4 @@ for i in range(1,8):
     list_density += [i]
 plt.plot(list_density,list_time)
 plt.show()
+
