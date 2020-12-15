@@ -928,12 +928,6 @@ class transducer:
             passed.add(state_h_prime)
         return True
 
-    #################### Work in progress #####################
-    def is_sequentiel_webber(self):
-        self.trim()
-        square_transducer = square_transducer_product(self, self)
-
-    ###########################################################
     def is_function(self, as_been_visited=None):
         """
         Find if the transducer is sequential or not.
