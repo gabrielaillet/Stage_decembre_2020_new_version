@@ -4,7 +4,7 @@ from random import randint
 from time import time
 import sys
 import numpy as np
-
+from sys import maxsize
 sys.setrecursionlimit(11000)
 
 
@@ -432,10 +432,96 @@ def find_born_of_number(states,output_alphabet):
             if b > max_distance:
                 max_distance = b
     return 2 * len(states)  * max_distance
+def adjency_matrix(square_trancesducer,dag_state):
+    is_one = False
+    if type(dag_state[0]) == str:
+        n = 1
+        list_of_state = dag_state
+        is_one = True
+    else:
+        n = len(dag_state)
+        list_of_state = list(dag_state)
+    ascenscy_matrix = np.zeros([n,n])
+    for i in range(n):
+        for t in range(n):
+            ascenscy_matrix[i][t] = maxsize
+    if not is_one:
+        for initial_state_of_transition in dag_state:
+            if initial_state_of_transition in square_trancesducer.transitions:
+                for character_of_transition in square_trancesducer.transitions[initial_state_of_transition]:
+                    for character_changed in square_trancesducer.transitions[initial_state_of_transition][character_of_transition]:
+                        for final_state_of_transition in square_trancesducer.transitions[initial_state_of_transition][character_of_transition][character_changed]:
+                            if final_state_of_transition in dag_state:
+                                i = list_of_state.index(initial_state_of_transition)
+                                t = list_of_state.index(final_state_of_transition)
+                                new_value  = len(character_changed[0]) - len(character_changed[1])
+                                if i == t:
+                                    if ascenscy_matrix[i][t] == maxsize:
+                                        ascenscy_matrix[i][t] = new_value
+                                    if abs(ascenscy_matrix[i][t]) < abs(new_value):
+                                        ascenscy_matrix[i][t] = new_value
+                                if ascenscy_matrix[i][t] == maxsize:
+                                    ascenscy_matrix[i][t] = new_value
+                                elif ascenscy_matrix[i][t] > new_value:
+                                    ascenscy_matrix[i][t] = new_value
+    else:
+        if dag_state in square_trancesducer.transitions:
+            for character_of_transition in square_trancesducer.transitions[dag_state]:
+                for character_changed in square_trancesducer.transitions[dag_state][
+                    character_of_transition]:
+                    new_value = len(character_changed[0]) - len(character_changed[1])
+                    if ascenscy_matrix[0][0] == maxsize:
+                        ascenscy_matrix[0][0] = new_value
+                    if abs(ascenscy_matrix[i][t]) <= abs(new_value):
+                        ascenscy_matrix[i][t] = new_value
+    return ascenscy_matrix,list_of_state,n
+
+def floydWarshall(graph,n): #n=no. of vertex
+    dist=graph
+    for k in range(n):
+        for i in range(n):
+            for j in range(n):
+                if dist[i][j] == maxsize:
+                    if dist[i][k] != maxsize:
+                        if  dist[k][j] != maxsize:
+                            dist[i][j] = dist[i][k] + dist[k][j]
+
+                    else:
+                        dist[i][j] = maxsize
+                elif dist[i][k] == maxsize or dist[i][k]:
+                    dist[i][j] = dist[i][j]
+                else:
+                    dist[i][j] = min(dist[i][j], dist[i][k] + dist[k][j])
+    return dist
+
+def T1_criteria_bis(square_tranducer,dag_set_state):
+    if square_tranducer.transitions == {}:
+        return True
+    if len(dag_set_state) != 1:
+        for e in dag_set_state:
+            print('ici')
+            graph,list_of_state,n = adjency_matrix(square_tranducer,e)
+            print(graph)
+            dist = floydWarshall(graph,n)
+            print(dist)
+            for i in range(n):
+                    if dist[0][i] != maxsize and dist[0][i] != 0:
+                        return False
+        else:
+            return True
+    else:
+        elem = dag_set_state.pop()
+        graph, list_of_state,n = adjency_matrix(square_tranducer, elem)
+        dist = floydWarshall(graph, n)
+        for i in range(n):
+                if dist[0][i] != maxsize and dist[0][i] != 0:
+                    return False
+        else:
+            return True
 
 def T1_criteria(square_transducer, dag_state):
-    born = find_born_of_number(square_transducer.states,square_transducer.output_symbols)
     if len(dag_state) == 1:
+        born = find_born_of_number(square_transducer.states,square_transducer.output_symbols)
         list_to_update1 = set()
         list_to_explore1 = set()
         tuple_to_use = dag_state.pop()
@@ -445,7 +531,6 @@ def T1_criteria(square_transducer, dag_state):
         if first_element in square_transducer.transitions:
             for character_to_change in square_transducer.transitions[first_element]:
                 for character_changed in square_transducer.transitions[first_element][character_to_change]:
-                    if (character_changed[0] != '') and (character_changed[1] != ''):
                         for final_state_of_transition in square_transducer.transitions[first_element][character_to_change][
                             character_changed]:
                             new_element = (final_state_of_transition, len(character_changed[0]) - len(character_changed[1]))
@@ -469,6 +554,7 @@ def T1_criteria(square_transducer, dag_state):
         return True
     else:
         for element in dag_state:
+            born = find_born_of_number(element, square_transducer.output_symbols)
             list_to_update1 = set()
             list_to_explore1 = set()
             first_element = element[0]
@@ -476,9 +562,6 @@ def T1_criteria(square_transducer, dag_state):
             if first_element in square_transducer.transitions:
                 for character_to_change in square_transducer.transitions[first_element]:
                     for character_changed in square_transducer.transitions[first_element][character_to_change]:
-
-                        if (character_changed[0] != '') and (character_changed[1] != ''):
-
                             for final_state_of_transition in \
                                     square_transducer.transitions[first_element][character_to_change][
                                         character_changed]:
@@ -511,7 +594,6 @@ def add_to_list(square_transducer, elem,born,list_to_explore, list_to_update):
         if element_to_explore[0] in square_transducer.transitions:
             for character_to_changed in square_transducer.transitions[element_to_explore[0]]:
                     for character_changed in square_transducer.transitions[element_to_explore[0]][character_to_changed]:
-                        if (character_changed[0] != '') and (character_changed[1] != ''):
                             for final_state_of_transition in \
                                     square_transducer.transitions[element_to_explore[0]][character_to_changed][
                                         character_changed]:
@@ -678,6 +760,106 @@ def creat_random_transducer2(number_of_state_max, density_transition, number_of_
                       transitions=transition,
                       output_symbols=out,
                       states=states)
+def mult(list_str,list_str2):
+    new_list = []
+    for e in list_str:
+        for e2 in list_str2:
+            new_list += [e+e2]
+    return new_list
+def creat_random_alphabe(n,want_epsilone):
+    new_output_alphabet = []
+    alphabete = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z']
+    if want_epsilone:
+        new_output_alphabet += ['']
+    for i in range(n):
+        new_list_of_letter_to_add = alphabete
+        t = 1
+        while t <= i:
+            new_list_of_letter_to_add = mult(new_list_of_letter_to_add,alphabete)
+            t += 1
+        new_output_alphabet += new_list_of_letter_to_add
+    return new_output_alphabet
+
+
+def creat_random_transducer3(number_of_state_max, density_transition, number_of_final_state, input_symbols,
+                             output_symbols_int, want_epsilon_transition):
+    """
+    Given a number of state maximum NM, a density of transition,a number of final state,
+    an alphabet of input and output.
+    Return a transducer that have at most NM states. The function calcul the number of transition of the complets NM
+    states transducer and takes randomly density_transition * NM transitions from it to creat the random transducer.
+    between 0 and 1 and if that number is lower than the density of transition the given transition is saved for the
+    transducer created.
+    :param number_of_state_max: Type - int
+    :param density_transition: Number between 0 and 1 the precision of the roll is 0.01.Type - float
+    :param number_of_final_state: number of final states.
+    :param input_symbols: Type - set of char
+    :param output_symbols: Type - set of char
+    :param want_epsilon_transition: Determine wether or not there is a u ---(char1,'')--> v transition in the transducer
+                                    created.  Type-bool
+    :return: Type - transducer
+    """
+    possible_out_put_word = creat_random_alphabe(output_symbols_int,want_epsilon_transition)
+    out = set()
+    number_of_transition = int(
+        number_of_state_max * number_of_state_max * len(input_symbols) * density_transition)
+
+
+    list_of_all_transition = []
+    for i in range(number_of_state_max):
+        for d in input_symbols:
+            for g in range(number_of_state_max):
+                index_rand = randint(0, len(possible_out_put_word) - 1)
+                f = possible_out_put_word[index_rand]
+                list_of_all_transition += [(i, d, f, g)]
+    states = set()
+    transition = dict()
+    final_states = set()
+    for i in range(number_of_transition):
+        rand = randint(0, len(list_of_all_transition) - 1)
+        current_item = list_of_all_transition[rand]
+        out.add(current_item[2])
+        list_of_all_transition.remove(current_item)
+        if ('q' + str(current_item[0])) not in transition:
+            transition['q' + str(current_item[0])] = dict()
+        if current_item[1] not in transition['q' + str(current_item[0])]:
+            transition['q' + str(current_item[0])][current_item[1]] = dict()
+        if current_item[2] not in transition['q' + str(current_item[0])][current_item[1]]:
+            transition['q' + str(current_item[0])][current_item[1]][current_item[2]] = set()
+        transition['q' + str(current_item[0])][current_item[1]][current_item[2]].add('q' + str(current_item[3]))
+        states.add('q' + str(current_item[0]))
+        states.add('q' + str(current_item[3]))
+        c = len(final_states)
+        if c < number_of_final_state:
+
+            rand_final_state = randint(0, 1)
+            if rand_final_state == 0:
+                final_states.add('q' + str(current_item[0]))
+
+        if c < number_of_final_state:
+
+            rand_final_state = randint(0, 1)
+            if rand_final_state == 0:
+                final_states.add('q' + str(current_item[3]))
+    if number_of_final_state < len(states):
+        while len(final_states) <= number_of_final_state:
+            fs = states.pop()
+            final_states.add(fs)
+        states = states.union(final_states)
+    else:
+        final_states = copy(states)
+
+    initial_state = states.pop()
+    states.add(initial_state)
+    if '' in out:
+        out.remove('')
+    return transducer(initial_states=initial_state,
+                      final_states=final_states,
+                      input_symbols=input_symbols,
+                      transitions=transition,
+                      output_symbols=out,
+                      states=states)
+
 
 
 def Phi(string_element_1, string_element_2):
@@ -816,8 +998,8 @@ class transducer:
                         for character_of_transition2 in self.transitions[initial_state_of_transition2]:
                             if character_of_transition1 == character_of_transition2:
                                 new_transition[initial_state_of_transition1][character_of_transition1] = dict()
-                                for character_changed1 in self.transitions[initial_state_of_transition1][
-                                    character_of_transition1]:
+                                for character_changed1 in \
+                                        self.transitions[initial_state_of_transition1][character_of_transition1]:
                                     new_transition[initial_state_of_transition1][character_of_transition1][
                                         character_changed1] = set()
                                     for character_changed2 in \
@@ -860,8 +1042,8 @@ class transducer:
             print("square transducer done")
         automaton = from_transducer_to_multiple_initial_nfa(square_transducer)
         set_of_marked_state = mark_state(square_transducer)
-        set_of_marked_state = set_of_marked_state.union(square_transducer.final_states)
         set_of_co_accessible_state_from_circle = states_set_of_co_accessible_nfa(automaton, set_of_marked_state)
+        set_of_co_accessible_state_from_circle = set_of_co_accessible_state_from_circle.union(square_transducer.final_states)
         automaton = sub_automaton(automaton, set_of_co_accessible_state_from_circle)
         if step_by_step_print:
             print("finding all cycle done")
@@ -888,8 +1070,7 @@ class transducer:
             state_h_prime = value_W_prime.pop()
             if state_h_prime[0] in square_transducer.transitions:
                 for character_of_transition in square_transducer.transitions[state_h_prime[0]]:
-                    for character_changed in square_transducer.transitions[state_h_prime[0]][
-                        character_of_transition]:
+                    for character_changed in square_transducer.transitions[state_h_prime[0]][character_of_transition]:
                         for final_state_of_transition in \
                                 square_transducer.transitions[state_h_prime[0]][character_of_transition][
                                     character_changed]:
@@ -977,53 +1158,25 @@ class transducer:
                                             if dictionary_of_value[final_state] != ('', ''):
                                                 return False
         return True
-
 """
 transduce = transducer(
-    states={'q2', 'q3', 'q0'},
+    states={'q1', 'q0'},
     input_symbols={'c'},
-    initial_states='q2',
+    initial_states='q1',
     output_symbols={'aa','b'},
-    final_states={'q0'},
-    transitions={'q2': {'c': {'aa': {'q3'}}}, 'q3': {'c': {'aa': {'q2', 'q0'}, 'b': {'q2', 'q0'}}}}
-)
+    final_states={'q1','q0'},
+    transitions={'q1': {'c': {'b': {'q1', 'q0'}}}})
 a = square_transducer_product(transduce, transduce)
-a.trim()
+print(a.transitions)
 d = from_transducer_to_multiple_initial_nfa(a)
 o = transduce.is_sequential()
 p = find_marked_states_for_dag(d)
+print(p)
 b = create_dag_of_strongly_connected_component(d, p)
 g = b.states
-l = T1_criteria(a,g)
-
-
-
-
-TT = 0
-TF = 0
-count_error = 0
-for d in range(12,13):
-    c = d/100
-    for i in range(10000):
-        print(i)
-        transduce = creat_random_transducer2(8,0.3,1,{'c'},{'aa','b'},want_epsilon_transition=False)
-        transduce.trim()
-        a = square_transducer_product(transduce,transduce)
-        d = from_transducer_to_multiple_initial_nfa(a)
-        o = transduce.is_sequential()
-        p = find_marked_states_for_dag(d)
-        b = create_dag_of_strongly_connected_component(d,p)
-        g = b.states
-        if not T1_criteria(a,g):
-            if o:
-                count_error += 1
-                print(transduce.states)
-                print(transduce.final_states)
-                print(transduce.transitions)
-                print(a.transitions)
-                print(transduce.initial_states)
-            TF += 1
-        else:
-            TT += 1
-
+l = T1_criteria_bis(a,g)
+print(l)
 """
+
+a = creat_random_transducer3(1,1,1,{'a','b'},3,want_epsilon_transition=False)
+print(a.transitions)
