@@ -424,15 +424,17 @@ def create_dag_of_strongly_connected_component(automaton, list_of_set_of_state):
                                             states=list_of_state
                                             )
 
-def find_born_of_number(states,output_alphabet):
+def find_born_of_number(square_transducer,states,output_alphabet):
+    graph,list,n = adjency_matrix(square_transducer)
+    matrix_of_value = floydWarshall(graph,n)
+    print(matrix_of_value)
     max_distance = 0
-    for i in output_alphabet:
-        for j in output_alphabet:
-            b =  abs(len(i) - len(j))
-            if b > max_distance:
-                max_distance = b
-    return 2 * len(states)  * max_distance
-def adjency_matrix(square_trancesducer,dag_state):
+    for i in range(n):
+        for j in range(i,n):
+            if matrix_of_value[i][j] < max_distance:
+                max_distance = matrix_of_value[i][j]
+    return 2 * n  * -1 * max_distance
+def adjency_matrix1(square_trancesducer, dag_state):
     is_one = False
     if type(dag_state[0]) == str:
         n = 1
@@ -475,7 +477,33 @@ def adjency_matrix(square_trancesducer,dag_state):
                     if abs(ascenscy_matrix[i][t]) <= abs(new_value):
                         ascenscy_matrix[i][t] = new_value
     return ascenscy_matrix,list_of_state,n
-
+def adjency_matrix(square_trancesducer):
+    is_one = False
+    n = len(square_trancesducer.states)
+    list_of_state = list(square_trancesducer.states)
+    ascenscy_matrix = np.zeros([n, n])
+    for i in range(n):
+        for t in range(n):
+            ascenscy_matrix[i][t] = maxsize
+    if not is_one:
+        for initial_state_of_transition in square_trancesducer.transitions:
+            for character_of_transition in square_trancesducer.transitions[initial_state_of_transition]:
+                for character_changed in square_trancesducer.transitions[initial_state_of_transition][
+                    character_of_transition]:
+                    for final_state_of_transition in square_trancesducer.transitions[initial_state_of_transition][character_of_transition][character_changed]:
+                        new_value = -abs(len(character_changed[0]) - len(character_changed[1]))
+                        i = list_of_state.index(initial_state_of_transition)
+                        t = list_of_state.index(final_state_of_transition)
+                        if i == t:
+                            if ascenscy_matrix[i][t] == maxsize:
+                                    ascenscy_matrix[i][t] = new_value
+                            if ascenscy_matrix[i][t] >  new_value:
+                                    ascenscy_matrix[i][t] = new_value
+                        if ascenscy_matrix[i][t] == maxsize:
+                                    ascenscy_matrix[i][t] = new_value
+                        elif ascenscy_matrix[i][t] > new_value:
+                                    ascenscy_matrix[i][t] = new_value
+    return ascenscy_matrix, list_of_state, n
 def floydWarshall(graph,n): #n=no. of vertex
     dist=graph
     for k in range(n):
@@ -500,7 +528,7 @@ def T1_criteria_bis(square_tranducer,dag_set_state):
     if len(dag_set_state) != 1:
         for e in dag_set_state:
             print('ici')
-            graph,list_of_state,n = adjency_matrix(square_tranducer,e)
+            graph,list_of_state,n = adjency_matrix1(square_tranducer, e)
             print(graph)
             dist = floydWarshall(graph,n)
             print(dist)
@@ -511,7 +539,7 @@ def T1_criteria_bis(square_tranducer,dag_set_state):
             return True
     else:
         elem = dag_set_state.pop()
-        graph, list_of_state,n = adjency_matrix(square_tranducer, elem)
+        graph, list_of_state,n = adjency_matrix1(square_tranducer, elem)
         dist = floydWarshall(graph, n)
         for i in range(n):
                 if dist[0][i] != maxsize and dist[0][i] != 0:
@@ -894,7 +922,7 @@ def are_comparable(str1, str2):
 
 ####################################
 
-def next_step(graph,current_list_to_explore):
+def next_step(graph,current_list_to_explore,born):
     new_list = copy(current_list_to_explore)
     for elem in current_list_to_explore:
 
@@ -906,12 +934,14 @@ def next_step(graph,current_list_to_explore):
                         new_element = (elem[0],character_to_changed,elem[2] + character_changed,final_state_of_transition)
                         new_element1 = (initial,character_to_changed,character_changed,final_state_of_transition)
                         if new_element not in new_list:
-                            new_list += [new_element]
+                            if len(new_element[2]) <= born:
+                                new_list += [new_element]
                         if new_element1 not in new_list:
-                            new_list += [new_element1]
+                            if len(new_element1[2]) <= born:
+                                new_list += [new_element1]
 
     return  new_list
-def first_step(transducer):
+def first_step(transducer,born):
     first_step_list = []
     initial = transducer.initial_states
     if initial in transducer.transitions:
@@ -921,7 +951,7 @@ def first_step(transducer):
                     first_step_list += [(initial,character_to_changed,character_changed,final_state_of_transition)]
     return first_step_list
 
-def T2(transducer):
+def T2_test(transducer):
     current_graph_states =[]
     current_graph_transition = []
     first_state_list = first_step(transducer)
@@ -1030,9 +1060,90 @@ def T2(transducer):
         state_to_parcourt1 = next_step(transducer,state_to_parcourt1)
 
     return current_graph_transition
+def depth_find_search(graph,initial_state,already_visited = None):
+    if already_visited is None:
+        already_visited = set()
+    already_visited.add(initial_state)
+    if initial_state in graph:
+        for element in graph[initial_state]:
+            if element not in already_visited:
+                already_visited =  depth_find_search(graph,element,already_visited,)
+    return already_visited
 
+def find_alphabete_for_T2(output_symboles):
+    alphabet = set()
+    for e in output_symboles:
+        for index in range(len(e)):
+            alphabet.add(e[index])
+    return alphabet
+def T2(transducer,element_marked):
+    born = find_born_of_number(transducer.states,transducer.output_symbols)
+    graph_state = []
+    initial_to_go_from = []
 
+    alphabet = find_alphabete_for_T2(transducer.output_symbols)
+    for states in transducer.states:
+        for states2 in transducer.states:
+            for input_letter in transducer.input_symbols:
+                for index in range(-born,born+1):
+                    for i in range(1,4):
+                        for letter in alphabet:
+                            graph_state += [(states,states2,input_letter,index,i,letter)]
+                            if index == 0:
+                                if i == 1:
+                                    initial_to_go_from += [(states,states2,input_letter,index,i,letter)]
 
+    graph_transition = dict()
+    for state in graph_state:
+        graph_transition[state] = set()
+
+    first_state_list = first_step(transducer)
+    state_to_parcourt1 = first_state_list
+    state_to_parcourt2 = next_step(transducer, first_state_list)
+    while state_to_parcourt1 != state_to_parcourt2:
+        for elem in state_to_parcourt2:
+            for elem2 in state_to_parcourt2:
+                if elem[1] == elem2[1]:
+                    state_to_go_from = []
+                    for e in graph_state:
+                        if e[0] == elem[0] and e[1] == elem2[0]:
+                            state_to_go_from += [e]
+                    for e in state_to_go_from:
+                        if e[3] == 1:
+                            new_element = (elem[3], elem2[3], e[2] + len(elem[2]) - len(elem2[2]), 1, e[4])
+                            graph_transition[e].add(new_element)
+
+                            if e[4] in elem[2]:
+                                j = elem[2].index(e[4])
+                                new_element = (elem[3], elem2[3], e[2] + j + len(e[4]) - len(elem2[2]), 2, e[4])
+                                graph_transition[e].add(new_element)
+                                if j + len(e[4]) < len(elem2[2]):
+                                    if elem2[2][e[2] + j:e[2] + j + len(e[4])] != e[4]:
+                                        new_element = (elem[3], elem2[3], 0, 3, e[4])
+                                        graph_transition[e].add(new_element)
+                        if e[3] == 2:
+                            if e[2] - len(elem2[2]) > 0:
+                                new_element = (elem[3], elem2[3], e[2] - len(elem2[2]), 2, e[4])
+                                graph_transition[e].add(new_element)
+                            else:
+                                if elem2[2][e[2]:e[2] + len(e[4])] != e[4]:
+                                    new_element = (elem[3], elem2[3], 0, 3, e[4])
+                                    graph_transition[e].add(new_element)
+                        if e[3] == 3:
+                            if e[2] == 0:
+                                new_element = (elem[3], elem2[3], 0, 3, e[4])
+                                graph_transition[e].add(new_element)
+
+        for e in initial_to_go_from:
+            list_of_accessible = depth_find_search(graph_transition,e)
+            elem_to_find = (e[0],e[1],e[2],3,e[4])
+            if elem_to_find in list_of_accessible:
+                if (e[0],e[1]) in element_marked:
+                    return False
+
+        state_to_parcourt2 = next_step(transducer, state_to_parcourt2)
+        state_to_parcourt1 = next_step(transducer, state_to_parcourt1)
+    return True
 
 ####################################
 
@@ -1311,8 +1422,9 @@ transduce = transducer(
     output_symbols={'aa','b'},
     final_states={'q1','q0'},
     transitions={'q0': {'c': {'b': {'q1'}}},
-                 'q1':{'c':{'a':{'q0'}}}})
-
+                 'q1':{'c':{'aa':{'q0'}}}})
+square = square_transducer_product(transduce,transduce)
+print(find_born_of_number(square,1,1))
 """
 a = square_transducer_product(transduce, transduce)
 print(a.transitions)
