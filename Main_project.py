@@ -766,6 +766,8 @@ def mult(list_str,list_str2):
         for e2 in list_str2:
             new_list += [e+e2]
     return new_list
+
+
 def creat_random_alphabe(n,want_epsilone):
     new_output_alphabet = []
     alphabete = ['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z']
@@ -890,6 +892,149 @@ def are_comparable(str1, str2):
     else:
         return False
 
+####################################
+
+def next_step(graph,current_list_to_explore):
+    new_list = copy(current_list_to_explore)
+    for elem in current_list_to_explore:
+
+        initial = elem[3]
+        if initial in graph.transitions:
+            for character_to_changed in graph.transitions[initial]:
+                for character_changed in graph.transitions[initial][character_to_changed]:
+                    for final_state_of_transition in graph.transitions[initial][character_to_changed][character_changed]:
+                        new_element = (elem[0],character_to_changed,elem[2] + character_changed,final_state_of_transition)
+                        new_element1 = (initial,character_to_changed,character_changed,final_state_of_transition)
+                        if new_element not in new_list:
+                            new_list += [new_element]
+                        if new_element1 not in new_list:
+                            new_list += [new_element1]
+
+    return  new_list
+def first_step(transducer):
+    first_step_list = []
+    initial = transducer.initial_states
+    if initial in transducer.transitions:
+        for character_to_changed in transducer.transitions[initial]:
+            for character_changed in transducer.transitions[initial][character_to_changed]:
+                for final_state_of_transition in transducer.transitions[initial][character_to_changed][character_changed]:
+                    first_step_list += [(initial,character_to_changed,character_changed,final_state_of_transition)]
+    return first_step_list
+
+def T2(transducer):
+    current_graph_states =[]
+    current_graph_transition = []
+    first_state_list = first_step(transducer)
+    for i in range(1,4):
+        for e in transducer.output_symbols:
+            current_graph_states += [(transducer.initial_states, transducer.initial_states, 0,i,e)]
+    for elem in first_state_list:
+        for elem2 in first_state_list:
+            if elem[1] == elem2[1]:
+                for e in transducer.output_symbols:
+                    current_graph_transition += [((elem[0],elem2[0],0,1,e),(elem[3],elem2[3],len(elem[2]) - len(elem2[2])
+                                                                           ,1,e))]
+                    current_graph_states += [(elem[3],elem2[3],len(elem[2]) - len(elem2[2])
+                                                                           ,1,e)]
+                    current_graph_transition += [
+                        ((elem[0], elem2[0], 0, 3, e), (elem[3], elem2[3], 0
+                                                        , 3, e))]
+                    current_graph_states += [(elem[3], elem2[3], 0
+                                                        , 3, e)]
+                    if e in elem[2]:
+                        j = elem[2].index(e)
+                        if j + len(e) - len(elem2[2]) > 0:
+                            current_graph_transition += [
+                                ((elem[0], elem2[0], 0, 1, e), (elem[3], elem2[3], j + len(e) - len(elem2[2])
+                                                                , 2, e))]
+                            current_graph_states += [(elem[3], elem2[3], j + len(e) - len(elem2[2])
+                                                                , 2, e)]
+                        if j + len(e) < len(elem2[2]):
+                            if elem2[2][j + len(e)] != e:
+                                current_graph_transition += [
+                                    ((elem[0], elem2[0], 0, 1, e), (elem[3], elem2[3], 0
+                                                                    , 3, e))]
+                                current_graph_states += [(elem[3], elem2[3], 0
+                                                                    , 3, e)]
+
+                    if elem2[2][0] != e:
+                        current_graph_transition += [
+                            ((elem[0], elem2[0], 0, 2, e), (elem[3], elem2[3], 0
+                                                            , 2,e))]
+                        current_graph_states += [(elem[3], elem2[3], 0
+                                                            , 2,e)]
+    state_to_parcourt1 = first_state_list
+    state_to_parcourt2 = next_step(transducer,first_state_list)
+    while state_to_parcourt1 != state_to_parcourt2:
+        for elem in state_to_parcourt2:
+            for elem2 in state_to_parcourt2:
+                if elem[1] == elem2[1]:
+                    state_to_go_from = []
+                    for e in current_graph_states:
+                        if e[0] == elem[0] and e[1] == elem2[0]:
+                            state_to_go_from += [e]
+                    true_one = ()
+                    for e in state_to_go_from:
+                        if true_one  == ():
+                            true_one = e
+                        else:
+                            if true_one[2] < e[2]:
+                                print('oui')
+                                true_one = e
+                    tr = [true_one]
+                    if tr != [()]:
+                        for e in tr:
+                            if e[3] == 1:
+                                new_element  = (elem[3],elem2[3],e[2] + len(elem[2]) - len(elem2[2]),1,e[4])
+                                if new_element not in current_graph_states:
+                                    current_graph_states += [new_element]
+                                if (e, new_element) not in current_graph_transition:
+                                    current_graph_transition += [(e, new_element)]
+                                if e[4] in elem[2]:
+                                    j = elem[2].index(e[4])
+                                    new_element = (elem[3],elem2[3],e[2] + j + len(e[4]) - len(elem2[2]),2,e[4])
+                                    if new_element not in current_graph_states:
+                                        current_graph_states += [new_element]
+                                    if (e, new_element) not in current_graph_transition:
+                                        current_graph_transition += [(e, new_element)]
+                                    if j + len(e[4]) < len(elem2[2]):
+                                        if elem2[2][e[2] + j:e[2] + j + len(e[4])] != e[4]:
+                                            new_element = (elem[3],elem2[3],0,3,e[4])
+                                            if new_element not in current_graph_states:
+                                                current_graph_states += [new_element]
+                                            if (e, new_element) not in current_graph_transition:
+                                                current_graph_transition += [(e, new_element)]
+
+                            if e[3] == 2:
+                                if e[2] - len(elem2[2]) > 0:
+                                    new_element = (elem[3],elem2[3],e[2] - len(elem2[2]),2,e[4])
+                                    if new_element not in current_graph_states:
+                                        current_graph_states += [new_element]
+                                    if (e, new_element) not in current_graph_transition:
+                                        current_graph_transition += [(e, new_element)]
+                                else:
+                                    if elem2[2][e[2]:e[2] + len(e[4])] != e[4]:
+                                        new_element = (elem[3], elem2[3], 0, 3, e[4])
+                                        if new_element not in current_graph_states:
+                                            current_graph_states += [new_element]
+                                        if (e, new_element) not in current_graph_transition:
+                                            current_graph_transition += [(e, new_element)]
+                            if e[3] == 3:
+                                if e[2] == 0:
+                                    new_element = (elem[3],elem2[3],0,3,e[4])
+                                    if new_element not in current_graph_states:
+                                        current_graph_states += [new_element]
+                                    if (e, new_element) not in current_graph_transition:
+                                        current_graph_transition += [(e, new_element)]
+        state_to_parcourt2 = next_step(transducer,state_to_parcourt2)
+        state_to_parcourt1 = next_step(transducer,state_to_parcourt1)
+
+    return current_graph_transition
+
+
+
+
+####################################
 
 class nfa_with_multiple_initial_states(NFA):
     def __init__(self, states, input_symbols, transitions, initial_states, final_states):
@@ -1158,14 +1303,17 @@ class transducer:
                                             if dictionary_of_value[final_state] != ('', ''):
                                                 return False
         return True
-"""
+
 transduce = transducer(
-    states={'q1', 'q0'},
+    states={'q1', 'q0','q2'},
     input_symbols={'c'},
-    initial_states='q1',
+    initial_states='q0',
     output_symbols={'aa','b'},
     final_states={'q1','q0'},
-    transitions={'q1': {'c': {'b': {'q1', 'q0'}}}})
+    transitions={'q0': {'c': {'b': {'q1'}}},
+                 'q1':{'c':{'a':{'q0'}}}})
+
+"""
 a = square_transducer_product(transduce, transduce)
 print(a.transitions)
 d = from_transducer_to_multiple_initial_nfa(a)
@@ -1178,5 +1326,4 @@ l = T1_criteria_bis(a,g)
 print(l)
 """
 
-a = creat_random_transducer3(1,1,1,{'a','b'},3,want_epsilon_transition=False)
-print(a.transitions)
+
